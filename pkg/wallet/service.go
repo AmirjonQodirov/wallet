@@ -1,11 +1,12 @@
 package wallet
 
 import (
-	"errors"
-
 	"github.com/AmirjonQodirov/wallet/pkg/types"
 	"github.com/google/uuid"
+	"errors"
+	
 )
+
 
 var ErrPhoneRegistered = errors.New("phone alredy registered")
 var ErrAmmountMustBePositive = errors.New("ammount must be greater then zero")
@@ -32,7 +33,7 @@ func (s *Service) RegisterAccount(phone types.Phone) (*types.Account, error) {
 		Balance: 0,
 	}
 	s.accounts = append(s.accounts, account)
-
+	
 	return account, nil
 }
 
@@ -40,7 +41,7 @@ func (s *Service) Deposit(accountID int64, ammount types.Money) error {
 	if ammount <= 0 {
 		return ErrAmmountMustBePositive
 	}
-
+	
 	var account *types.Account
 	for _, acc := range s.accounts {
 		if acc.ID == accountID {
@@ -48,11 +49,11 @@ func (s *Service) Deposit(accountID int64, ammount types.Money) error {
 		break
 	}
 	}
-
+	
 	if account == nil {
 		return ErrAccountNotFound
 	}
-
+	
 	account.Balance += ammount
 	return nil
 }
@@ -61,7 +62,7 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 	if amount <= 0 {
 		return nil, ErrAmmountMustBePositive
 	}
-
+	
 	var account *types.Account
 	for _, acc := range s.accounts {
 		if acc.ID == accountID {
@@ -69,15 +70,15 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 		break
 	}
 	}
-
+	
 	if account == nil {
 		return nil, ErrAccountNotFound
 	}
-
+	
 	if account.Balance < amount {
 		return nil, ErrNotEnoughBalance
 	}
-
+	
 	account.Balance -= amount
 	paymentID := uuid.New().String()
 	payment := &types.Payment{
@@ -87,12 +88,12 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 		Category: 	category,
 		Status: 	types.PaymentStatusInProgress,
 	}
-
+	
 	s.payments = append(s.payments, payment)
 	return payment, nil
-
+	
 }
-
+	
 
 func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 	for _, account := range s.accounts{
@@ -101,4 +102,33 @@ func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 		}
 	}
 	return nil, ErrAccountNotFound
+}
+
+
+func (s *Service) Reject(paymentID string) error  {
+	var payment_err *types.Payment
+	for _, payment:=range s.payments{
+		if payment.ID == paymentID{
+			payment_err = payment
+		}
+	}
+		if payment_err == nil {
+			return ErrPaymentNotFound
+		}
+			payment_err.Status = types.PaymentStatusFail
+			account, err := s.FindAccountByID(payment_err.AccountID)
+			if err != nil{
+				return nil
+			}
+			account.Balance+=payment_err.Amount
+			return nil
+}
+
+func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
+	for _, payment := range s.payments{
+		if payment.ID == paymentID {
+			return payment, nil
+		}
+	}
+	return nil, ErrPaymentNotFound
 }
